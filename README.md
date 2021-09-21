@@ -20,16 +20,13 @@ ou equivalentes.
 ## Executando o Programa
 
 Basta executar um dos comandos
-<!-- ```bash
-make inicializa.test PARAMS="N P C I"
-make produz.test PARAMS="N P C I"
-make consome.test PARAMS="N P C I"
-make completo.test PARAMS="N P C I"
+```bash
+make inicializa.test PARAMS="l r APROX"
 ```
 Ex:
 ```bash
-make inicializa.test PARAMS="16 2 2 4"
-``` -->
+make tarefa2-1 && clear && ./bin/tarefa2-1 1 10 0.000000001
+```
 
 ## Compilando o Programa
 
@@ -37,7 +34,7 @@ make inicializa.test PARAMS="16 2 2 4"
 
 Execute o comando
 ```bash
-make tarefa2
+make tarefa2-1
 ```
 
 ## Testes
