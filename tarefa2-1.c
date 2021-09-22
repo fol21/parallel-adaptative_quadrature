@@ -52,13 +52,13 @@ int main(int argc, char *argv[])
     omp_set_num_threads(8);
 
     //Argument Input
-    // double L = (double) strtof(argv[1], NULL);
-    // double R = (double) strtof(argv[2], NULL);
-    // double A = (double) strtof(argv[3], NULL);
-    // printf("Parametros l, r, aproximation = %.1f %.1f %.9f\n", L, R, A);
+    double L = (double) strtof(argv[1], NULL);
+    double R = (double) strtof(argv[2], NULL);
+    double A = (double) strtof(argv[3], NULL);
+    printf("Parametros l, r, aproximation = %.1f %.1f %.9f\n", L, R, A);
 
-    // adaptavive_quadrature_args args = {L, R, abs_sinc, A};
-    adaptavive_quadrature_args args = {-10, 10, abs_sinc, 0.00001};
+    adaptavive_quadrature_args args = {L, R, abs_sinc, A};
+    // adaptavive_quadrature_args args = {-10, 10, abs_sinc, 0.00001};
 
     // Pthread
     printf("START SEQUENTIAL********************\n");
