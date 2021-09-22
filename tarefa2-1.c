@@ -10,6 +10,12 @@
 #include <unistd.h>
 
 
+double abs_sinc(double x)
+{
+    double res = x != 0 ? fabs(sin(x) / (x)) : 1.0;
+    return res;
+}
+
 double carga(double x)
 {
 
@@ -23,7 +29,7 @@ double carga(double x)
         /* code */
         sum += power[i] * sin(frequencies[i] * x + phases[i]);
     }
-    return abs(sum);
+    return fabs(sum);
 }
 
 double offsetSin(double x)
@@ -58,11 +64,11 @@ void* omp_adaptavive_quadrature_thread(adaptavive_quadrature_args* args)
 
     double l = args->l;
     double r = args->r;
-    double fl = fabs(args->func(args->l));
-    double fr = fabs(args->func(args->r));
+    double fl = args->func(args->l);
+    double fr = args->func(args->r);
 
     m = (args->r + args->l)/2;
-    double fm = fabs(args->func(m));
+    double fm = args->func(m);
     
     //calculate leftlr
     larea = (fl + fm)*(-l + m) / 2;
@@ -71,7 +77,7 @@ void* omp_adaptavive_quadrature_thread(adaptavive_quadrature_args* args)
     //calculate total
     tarea = (fl + fr)*(-l + r) / 2;
     
-    if(/** Acceptable Aprox **/ tarea - (larea + rarea) <= args->approx)
+    if(/** Acceptable Aprox **/ fabs(tarea - (larea + rarea)) <= args->approx)
     {
         //result
         *total = tarea;
@@ -111,14 +117,14 @@ void* adaptavive_quadrature_thread(void* arg)
     adaptavive_quadrature_args* args = (adaptavive_quadrature_args*) arg;
     double* total = (double*) malloc(sizeof(double));
     double tarea, larea, rarea, m;
-    
+
     double l = args->l;
     double r = args->r;
-    double fl = fabs(args->func(args->l));
-    double fr = fabs(args->func(args->r));
-    
+    double fl = args->func(args->l);
+    double fr = args->func(args->r);
+
     m = (args->r + args->l)/2;
-    double fm = fabs(args->func(m));
+    double fm = args->func(m);
     
     //calculate leftlr
     larea = (fl + fm)*(-l + m) / 2;
@@ -127,7 +133,7 @@ void* adaptavive_quadrature_thread(void* arg)
     //calculate total
     tarea = (fl + fr)*(-l + r) / 2;
 
-    if(/** Acceptable Aprox **/ tarea - (larea + rarea) <= args->approx)
+    if(/** Acceptable Aprox **/ fabs(tarea - (larea + rarea)) <= args->approx)
     {
         //result
         *total = tarea;
@@ -163,13 +169,14 @@ int main(int argc, char *argv[])
     struct timeval current_time;
     double total = 0;
 
-    // Argument Input
+    //Argument Input
     double L = (double) strtof(argv[1], NULL);
     double R = (double) strtof(argv[2], NULL);
     double A = (double) strtof(argv[3], NULL);
     printf("Parametros l, r, aproximation = %.1f %.1f %.9f\n", L, R, A);
 
-    adaptavive_quadrature_args args = {L, R, carga, A};
+    adaptavive_quadrature_args args = {L, R, abs_sinc, A};
+    // adaptavive_quadrature_args args = {-10, 10, abs_sinc, 0.00001};
 
     // Pthread
     printf("START PHTREAD********************\n");
