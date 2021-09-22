@@ -9,211 +9,80 @@
 #include <semaphore.h>
 #include <unistd.h>
 
-
-double abs_sinc(double x)
-{
-    double res = x != 0 ? fabs(sin(x) / (x)) : 1.0;
-    return res;
-}
-
-double carga(double x)
-{
-
-    double power[8] = {5731, 1243, 774, 736, 460, 50, 87, 126};
-    double frequencies[8] = {0.11, 0.2, 0.53, 0.74, 1.1, 1.53, 2.3, 2};
-    double phases[8] = {0.36, 3.5, 1.5, 1.9, -2.5, -1.36, -5, -1.2};
-
-    double sum = 0;
-    for (int i = 0; i < 8; i++)
-    {
-        /* code */
-        sum += power[i] * sin(frequencies[i] * x + phases[i]);
-    }
-    return fabs(sum);
-}
-
-double offsetSin(double x)
-{
-    double y1 = sin((1.0/2.0) * M_PI * x);
-    double y2 = cos((1.0/5.0) * M_PI * x);
-    double y3 = sin((1.0/10.0) * M_PI * x);
-    return y1 + y2 + y3 + 5;
-}
-
-typedef struct adaptavive_quadrature_args
-{
-    double l;
-    double r;
-    double (*func)(double);
-    double approx;
-} adaptavive_quadrature_args;
+#include <utils.h>
+#include <benchmark.h>
+#include <adaptative-quadrature.h>
 
 #ifdef _OPENMP
 #include <omp.h>
 
-void delay(int max_delay)
+void sequential_routine(void* args)
 {
-    sleep(rand() % max_delay);
+
+    double* res = adaptavive_quadrature(args);
+    double total = *(res);
+    
+    printf("total: %2f\n", total);
 }
 
-
-void* omp_adaptavive_quadrature_thread(adaptavive_quadrature_args* args)
+void pthread_routine(void* args)
 {
-    double* total = (double*) malloc(sizeof(double));
-    double tarea, larea, rarea, m;
-
-    double l = args->l;
-    double r = args->r;
-    double fl = args->func(args->l);
-    double fr = args->func(args->r);
-
-    m = (args->r + args->l)/2;
-    double fm = args->func(m);
-    
-    //calculate leftlr
-    larea = (fl + fm)*(-l + m) / 2;
-    //calculate right
-    rarea = (fm + fr)*(-m + r) / 2;
-    //calculate total
-    tarea = (fl + fr)*(-l + r) / 2;
-    
-    if(/** Acceptable Aprox **/ fabs(tarea - (larea + rarea)) <= args->approx)
-    {
-        //result
-        *total = tarea;
-        return total;
-    }
-    else
-    {
-
-        void* lresult;
-        void* rresult;
-        adaptavive_quadrature_args largs = {args->l, m, args->func, args->approx};
-        adaptavive_quadrature_args rargs = {m, args->r, args->func, args->approx};
-        
-        #pragma omp parallel
-        {
-            #pragma omp sections
-            {
-                #pragma omp section
-                {
-                    lresult = omp_adaptavive_quadrature_thread(&largs);
-                }
-                #pragma omp section
-                {
-                    rresult = omp_adaptavive_quadrature_thread(&rargs);
-                }
-            }
-        }
-        
-        *total = *((double*)lresult) + *((double*)rresult);
-
-        return total;
-    }
-}
-
-void* adaptavive_quadrature_thread(void* arg)
-{
-    adaptavive_quadrature_args* args = (adaptavive_quadrature_args*) arg;
-    double* total = (double*) malloc(sizeof(double));
-    double tarea, larea, rarea, m;
-
-    double l = args->l;
-    double r = args->r;
-    double fl = args->func(args->l);
-    double fr = args->func(args->r);
-
-    m = (args->r + args->l)/2;
-    double fm = args->func(m);
-    
-    //calculate leftlr
-    larea = (fl + fm)*(-l + m) / 2;
-    //calculate right
-    rarea = (fm + fr)*(-m + r) / 2;
-    //calculate total
-    tarea = (fl + fr)*(-l + r) / 2;
-
-    if(/** Acceptable Aprox **/ fabs(tarea - (larea + rarea)) <= args->approx)
-    {
-        //result
-        *total = tarea;
-        return total;
-    }
-    else {
-        
-        //left
-        pthread_t lthread;
-        adaptavive_quadrature_args largs = {args->l, m, args->func, args->approx};
-        pthread_create(&lthread, NULL, adaptavive_quadrature_thread, &largs);
-        void* lresult;
-
-        //right
-        pthread_t rthread;
-        adaptavive_quadrature_args rargs = {m, args->r, args->func, args->approx};
-        pthread_create(&rthread, NULL, adaptavive_quadrature_thread, &rargs);
-        void* rresult;
-        
-        pthread_join(lthread, &lresult);
-        pthread_join(rthread, &rresult);
-        
-        *total = *((double*)lresult) + *((double*)rresult);
-        return total;        
-    }
-}
-
-    
-int main(int argc, char *argv[])
-{
-    omp_set_num_threads(4);
-
-    struct timeval current_time;
-    double total = 0;
-
-    //Argument Input
-    double L = (double) strtof(argv[1], NULL);
-    double R = (double) strtof(argv[2], NULL);
-    double A = (double) strtof(argv[3], NULL);
-    printf("Parametros l, r, aproximation = %.1f %.1f %.9f\n", L, R, A);
-
-    adaptavive_quadrature_args args = {L, R, abs_sinc, A};
-    // adaptavive_quadrature_args args = {-10, 10, abs_sinc, 0.00001};
-
-    // Pthread
-    printf("START PHTREAD********************\n");
-    gettimeofday(&current_time, NULL);
-    double tic = (double)current_time.tv_sec + current_time.tv_usec / 1000000.0;
-
     pthread_t thread;
-    pthread_create(&thread, NULL, adaptavive_quadrature_thread, &args);
+    pthread_create(&thread, NULL, pthread_adaptavive_quadrature, args);
     
     void* res;
     pthread_join(thread, &res);
-    total = *((double*) res);
+    double total = *((double*) res);
     
     printf("total: %2f\n", total);
+}
 
-    gettimeofday(&current_time, NULL);
-    double toc = (double)current_time.tv_sec + current_time.tv_usec / 1000000.0;
+void omp_routine(void* args)
+{
+    double total = 0;
+    #pragma omp parallel
+    {
+        total = *((double*) omp_adaptavive_quadrature(args));
+    }
+    printf("total: %2f\n", total);
+}
+
+int main(int argc, char *argv[])
+{
+    omp_set_num_threads(8);
+
+    //Argument Input
+    // double L = (double) strtof(argv[1], NULL);
+    // double R = (double) strtof(argv[2], NULL);
+    // double A = (double) strtof(argv[3], NULL);
+    // printf("Parametros l, r, aproximation = %.1f %.1f %.9f\n", L, R, A);
+
+    // adaptavive_quadrature_args args = {L, R, abs_sinc, A};
+    adaptavive_quadrature_args args = {-10, 10, abs_sinc, 0.00001};
+
+    // Pthread
+    printf("START SEQUENTIAL********************\n");
+
+    long int sequential_time = ustopwatch(sequential_routine, &args);
+
+    printf("******************** END SEQUENTIAL\n");
+    printf("Elapsed: %ld microseconds\n\n", sequential_time);
+
+    // Pthread
+    printf("START PHTREAD********************\n");
+
+    long int pthread_time = ustopwatch(pthread_routine, &args);
 
     printf("******************** END PTHREAD\n");
-    printf("Elapsed: %.0f miliseconds\n\n", (double)(toc - tic) * 1000);
+    printf("Elapsed: %ld microseconds\n\n", pthread_time);
  
     //OpenMP
     printf("START OPENMP********************\n");
-    gettimeofday(&current_time, NULL);
-    tic = (double)current_time.tv_sec + current_time.tv_usec / 1000000.0;
 
-    #pragma omp parallel
-    {
-        total = *((double*) omp_adaptavive_quadrature_thread(&args));
-    }
-    printf("total: %2f\n", total);
-
-    gettimeofday(&current_time, NULL);
-    toc = (double)current_time.tv_sec + current_time.tv_usec / 1000000.0;
+    long int omp_time = ustopwatch(omp_routine, &args);
 
     printf("******************** END OPENMP\n");
-    printf("Elapsed: %.0f miliseconds\n\n", (double)(toc - tic) * 1000);
+    printf("Elapsed: %ld microseconds\n\n", omp_time);
 
     return 0;
 }

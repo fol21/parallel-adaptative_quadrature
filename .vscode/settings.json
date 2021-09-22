@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "semaphore.h": "c",
-        "cmath": "c"
+        "cmath": "c",
+        "adaptative-quadrature.h": "c"
     }
 }
