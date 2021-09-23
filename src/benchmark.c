@@ -1,6 +1,8 @@
 #include <benchmark.h>
 
-long int mstopwatch(void (*routine)(void*), void* args)
+
+
+double stopwatch(void (*routine)(void*), void* args)
 {
     struct timeval current_time;
     
@@ -12,20 +14,23 @@ long int mstopwatch(void (*routine)(void*), void* args)
     gettimeofday(&current_time, NULL);
     double toc = (double)current_time.tv_sec + current_time.tv_usec / 1000000.0;
 
-    return (long int)((toc - tic) * 1000);
+    return (toc - tic);
 }
 
-long int ustopwatch(void (*routine)(void*), void* args)
+double mstopwatch(void (*routine)(void*), void* args)
 {
-        struct timeval current_time;
-    
-    gettimeofday(&current_time, NULL);
-    double tic = (double)current_time.tv_sec + current_time.tv_usec / 1000000.0;
-    
-    routine(args);
+    double seconds = stopwatch(routine, args);
+    return seconds * 1000;
+}
 
-    gettimeofday(&current_time, NULL);
-    double toc = (double)current_time.tv_sec + current_time.tv_usec / 1000000.0;
+double ustopwatch(void (*routine)(void*), void* args)
+{
+    double seconds = stopwatch(routine, args);
+    return seconds * 1000000;
+}
 
-    return (long int)((toc - tic) * 1000000);
+double pstopwatch(void (*routine)(void*), void* args)
+{
+    double seconds = stopwatch(routine, args);
+    return seconds * 1000000000;
 }

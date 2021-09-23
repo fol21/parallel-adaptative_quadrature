@@ -9,6 +9,7 @@
 
 #ifdef _OPENMP
 #include <omp.h>
+#endif
 
 typedef struct adaptavive_quadrature_args
 {
@@ -22,5 +23,4 @@ double* adaptavive_quadrature(adaptavive_quadrature_args* args);
 void* pthread_adaptavive_quadrature(void* arg);
 void* omp_adaptavive_quadrature(adaptavive_quadrature_args* args);
 
-#endif
 #endif // !ADAPTATIVE_QUADRATURE_H

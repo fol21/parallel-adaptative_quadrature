@@ -7,7 +7,9 @@
 #include <time.h>
 
 
-long int mstopwatch(void (*routine)(void*), void* args);
-long int ustopwatch(void (*routine)(void*), void* args);
+double stopwatch(void (*routine)(void*), void* args);
+double mstopwatch(void (*routine)(void*), void* args);
+double ustopwatch(void (*routine)(void*), void* args);
+double pstopwatch(void (*routine)(void*), void* args);
 
 #endif // !BENCHMARK_H
