@@ -20,7 +20,7 @@ BIN = ./bin
 OBJ = ./src/obj
 
 #Objects
-_FOBJ = buffer.o queue.o vector.o benchmark.o utils.o adaptative-quadrature.o
+_FOBJ = queue.o vector.o benchmark.o utils.o adaptative-quadrature.o
 FOBJ := $(_FOBJ:%.o=./src/obj/%.o)
 
 # Params
@@ -28,9 +28,6 @@ PARAMS = 16 1 1 1
 
 
 ###### Dependencies #######
-
-buffer: ./src/buffer.c ./include/buffer.h
-	$(CC) $(LIBS) ${CFLAGS} $(OFLAGS) $< -o ./src/obj/$@.o
 
 queue: ./src/queue.c ./include/queue.h
 	$(CC) $(LIBS) ${CFLAGS} $(OFLAGS) $< -o ./src/obj/$@.o
@@ -49,7 +46,6 @@ adaptative-quadrature: ./src/adaptative-quadrature.c ./include/adaptative-quadra
 
 
 dependencies:
-	make buffer
 	make queue
 	make vector
 	make utils

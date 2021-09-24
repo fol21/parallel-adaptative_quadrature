@@ -1,9 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/syscall.h>
-#include <sys/time.h>
-#include <time.h>
-#include <math.h>
 
 #include <pthread.h>
 #include <semaphore.h>
@@ -18,7 +15,6 @@
 
 void sequential_routine(void* args)
 {
-
     double* res = adaptavive_quadrature(args);
     double total = *(res);
     
@@ -63,7 +59,7 @@ int main(int argc, char *argv[])
     // Pthread
     printf("START SEQUENTIAL********************\n");
 
-    long int sequential_time = ustopwatch(sequential_routine, &args);
+    long int sequential_time = (long int) ustopwatch(sequential_routine, &args);
 
     printf("******************** END SEQUENTIAL\n");
     printf("Elapsed: %ld microseconds\n\n", sequential_time);
@@ -71,7 +67,7 @@ int main(int argc, char *argv[])
     // Pthread
     printf("START PHTREAD********************\n");
 
-    long int pthread_time = ustopwatch(pthread_routine, &args);
+    long int pthread_time = (long int) ustopwatch(pthread_routine, &args);
 
     printf("******************** END PTHREAD\n");
     printf("Elapsed: %ld microseconds\n\n", pthread_time);
@@ -79,7 +75,7 @@ int main(int argc, char *argv[])
     //OpenMP
     printf("START OPENMP********************\n");
 
-    long int omp_time = ustopwatch(omp_routine, &args);
+    long int omp_time = (long int) ustopwatch(omp_routine, &args);
 
     printf("******************** END OPENMP\n");
     printf("Elapsed: %ld microseconds\n\n", omp_time);

@@ -6,128 +6,48 @@
 #include <semaphore.h>
 #include <unistd.h>
 
-#include <buffer.h>
 #include <queue.h>
-  
-// typedef struct deposita_args { tbuffer* buffer; int item; int insertions;} deposita_args;
-// typedef struct consome_args { tbuffer* buffer; int id; int consome} consome_args;
+#include <utils.h>
+#include <benchmark.h>
+#include <adaptative-quadrature.h>
 
-// void* deposita_thread(void* arg)
-// {
-//     pid_t tid = syscall(SYS_gettid);
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 
-//     deposita_args* args= (deposita_args*) arg;
-//     int count = args->insertions;
-//     while (count > 0)
-//     {
-//         sleep(rand() % 5);
-//         int data = args->item * (rand() % 100);
-        
-//         //wait
-//         sem_wait(&(args->buffer->mutex));
-//         deposita(args->buffer, data);
-//         count--;
+void omp_routine(void* args)
+{
+    adaptavive_quadrature_args* qargs = (adaptavive_quadrature_args*) args;
+    double total = 0;
+    Queue_v* queue = createQueue(8);
+    sem_t mutex;
+    sem_init(&mutex, 0, 1);
 
-//         printf("%d::%d -> Buffer[ ", tid, data);
-//         for(int i = 0; i < args->buffer->numpos; i++)
-//         {
-//             char str[10];
-//             sprintf(str, "%d", args->buffer->data[i]);
-//             char* symbol = args->buffer->data[i] >= 0 ? str : "*";
-//             printf("%s ", symbol);
-//         }
-//         printf(" ] ( free slots: %d next free: %d )\n", args->buffer->free_slots, front(args->buffer->nxt_free));
-//         //signal
-//         sem_post(&(args->buffer->mutex));
-//     }
-//     return NULL;
-// }
+    omp_adaptavive_quadrature_admin(&total, qargs, queue, &mutex);
+    printf("total: %2f\n", total);
+}
 
-// void* consome_thread(void* arg)
-// {
-//     pid_t tid = syscall(SYS_gettid);
+int main(int argc, char *argv[])
+{
+    // omp_set_num_threads(8);
 
-//     consome_args* args= (consome_args*) arg;
-    
-//     int count = args->consome;
-//     int data[100];
-//     int nxt = 0;
-//     for (int i = 0; i < 100; i++){ data[i] = -1;}
-    
-//     while (count-- > 0)
-//     {
-//         sleep(rand() % 2);
-        
-//         //wait
-//         sem_wait(&(args->buffer->mutex));
-//         data[nxt] = consome(args->buffer, args->id);
-//         printf("Consumer %d data: [ ", args->id);
-//         int it = 0;
-//         while(data[it] != -1)
-//         {
-//             printf("%d ", data[it++]);
-//         }
-//         printf(
-//             "] ( free slots: %d next data: %d )\n",
-//             args->buffer->free_slots,
-//             isEmpty(args->buffer->nxtdata[args->id]) ? -1 : front(args->buffer->nxtdata[args->id])
-//         );
+    // //Argument Input
+    // double L = (double) strtof(argv[1], NULL);
+    // double R = (double) strtof(argv[2], NULL);
+    // double A = (double) strtof(argv[3], NULL);
+    // printf("Parametros l, r, aproximation = %.1f %.1f %.9f\n", L, R, A);
 
-//         printf("%d::%d <- Buffer[ ", tid, data[nxt++]);
-//         for(int i = 0; i < args->buffer->numpos; i++)
-//         {
-//             char str[10];
-//             sprintf(str, "%d", args->buffer->data[i]);
-//             char* symbol = args->buffer->data[i] >= 0 ? str : "*";
-//             printf("%s[%d] ", symbol, args->buffer->to_read[i]);
-//         }
-//         printf(" ] ( free slots: %d next free: %d )\n", args->buffer->free_slots, front(args->buffer->nxt_free));
-//         //signal
-//         sem_post(&(args->buffer->mutex));
-//     } 
-//     return NULL;
-// }
-  
-  
-// int main(int argc, char *argv[])
-// {
-//     // Argument Input
-//     int N = (int) strtol(argv[1], NULL, 10);
-//     int P = (int) strtol(argv[2], NULL, 10);
-//     int C = (int) strtol(argv[3], NULL, 10);
-//     int I = (int) strtol(argv[4], NULL, 10);
-//     printf("Parametros N, P, C, I = %d %d %d %d\n", N, P, C, I);
-    
+    // adaptavive_quadrature_args args = {L, R, abs_sinc, A};
+    adaptavive_quadrature_args args = {-10, 10, abs_sinc, 0.00001};
 
-//     pthread_t* prod_thds = (pthread_t*)malloc(sizeof(pthread_t) * P); 
-//     pthread_t* cons_thds = (pthread_t*)malloc(sizeof(pthread_t) * C); 
-//     tbuffer* buffer = iniciabuffer(N, P, C);
-    
-//     //Deposita
-//     deposita_args* d_arg = (deposita_args *) malloc(sizeof(deposita_args) * P);
-//     for (int i = 0; i < P; i++)
-//     {
-//         //Produz
-//         d_arg[i].buffer = buffer;
-//         d_arg[i].item = rand() % 100;
-//         d_arg[i].insertions = I;
-//         pthread_create(&(prod_thds[i]), NULL, deposita_thread, &d_arg[i]);
-//     }
 
-//     sleep(5);
-//     consome_args* c_arg = (consome_args *) malloc(sizeof(consome_args) * C);
-//     for (int i = 0; i < C; i++)
-//     {
-//         //Consome
-//         c_arg[i].buffer = buffer;
-//         c_arg[i].id = i;
-//         c_arg[i].consome = P * I;
-//         pthread_create(&(cons_thds[i]), NULL, consome_thread, &c_arg[i]);
-//     }
+    //OpenMP
+    printf("START OPENMP********************\n");
 
-//     for (int i = 0; i < P; i++) {pthread_join(prod_thds[i], NULL);}
-//     for (int i = 0; i < C; i++) {pthread_join(cons_thds[i], NULL);}
+    long int omp_time = (long int) ustopwatch(omp_routine, &args);
 
-//     finalizabuffer(buffer);
-//     return 0;
-// }
+    printf("******************** END OPENMP\n");
+    printf("Elapsed: %ld microseconds\n\n", omp_time);
+
+    return 0;
+}

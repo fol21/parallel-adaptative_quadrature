@@ -6,46 +6,47 @@
 #include <stdlib.h>
 #include<stdbool.h>  
 
+#define TYPE void*
   
 // A structure to represent a FIFO queue
 // enqueue ---> |rear|*|*|*|*|front| -----> dequeue
-typedef struct Queue {
+typedef struct Queue_v {
     int front, rear, size;
     unsigned capacity;
-    int* array;
-} Queue;
+    void** array;
+} Queue_v;
   
 // function to create a queue
 // of given capacity.
 // It initializes size of queue as 0
-Queue* createQueue(unsigned capacity);
+Queue_v* createQueue(unsigned capacity);
   
-// Queue is full when size becomes
+// Queue_v is full when size becomes
 // equal to the capacity
-bool isFull(struct Queue* queue);
+bool isFull(struct Queue_v* queue);
   
-// Queue is empty when size is 0
-bool isEmpty(struct Queue* queue);
+// Queue_v is empty when size is 0
+bool isEmpty(struct Queue_v* queue);
   
 // Function to add an item to the queue.
 // It changes rear and size
-void enqueue(struct Queue* queue, int item);
+void enqueue(struct Queue_v* queue, void* item);
 
 // Function to remove an item from queue.
 // It changes front and size
-int dequeue(struct Queue* queue);
+void* dequeue(struct Queue_v* queue);
 
 // Function to get front of queue
-int front(struct Queue* queue);
+void* front(struct Queue_v* queue);
 
 // Function to get rear of queue
-int rear(struct Queue* queue);
+void* rear(struct Queue_v* queue);
 
 #endif // !QUEUE_H
 
 // int main()
 // {
-//     struct Queue* queue = createQueue(1000);
+//     struct Queue_v* queue = createQueue(1000);
   
 //     enqueue(queue, 10);
 //     enqueue(queue, 20);
