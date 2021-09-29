@@ -22,18 +22,13 @@ void omp_routine(void* arg)
     _r_args* args = (_r_args*) arg;
     double total = 0;
     Queue_v* queue = createQueue(1024 * 1024  / sizeof(int));
-    sem_t mutex;
-    sem_init(&mutex, 0, 1);
 
-    omp_adaptavive_quadrature_admin(&total, &(args->aq_args), queue, 8, &mutex);
-    sem_destroy(&mutex);
+    omp_adaptavive_quadrature_admin(&total, &(args->aq_args), queue, 1);
     printf("total: %2f\n", total);
 }
 
 int main(int argc, char *argv[])
 {
-   
-
     //Argument Input
     double L = (double) strtof(argv[1], NULL);
     double R = (double) strtof(argv[2], NULL);
