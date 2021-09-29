@@ -1,5 +1,9 @@
 #include <adaptative-quadrature.h>
 
+int _acceptable_approx(adaptavive_quadrature_args* args, double* total);
+adaptavive_quadrature_intervals _get_intervals(adaptavive_quadrature_args* args, int num_intervals);
+
+
 adaptavive_quadrature_args* create_adaptative_quadrature_args(
     double l,
     double r,
@@ -42,78 +46,80 @@ double* adaptavive_quadrature(adaptavive_quadrature_args* args)
     }
 }
 
-void* pthread_adaptavive_quadrature(void* arg)
+void* pthread_adaptavive_quadrature(void* arg, int num_intervals)
 {
     adaptavive_quadrature_args* args = (adaptavive_quadrature_args*) arg;
     double* total = (double*) malloc(sizeof(double));
-    double m = (args->r + args->l)/2;
-    int approx = _acceptable_approx(args, total);
+    *total = 0;
 
-    if(/** Acceptable Aprox **/ approx)
+    adaptavive_quadrature_intervals intervals = _get_intervals(args, num_intervals);
+
+    pthread_t* thds = (pthread_t*) malloc(intervals.divisions * sizeof(pthread_t));
+    for (int i = 0; i < intervals.divisions; i++)
     {
-        //result
-        return total;
+        pthread_create(&(thds[i]), NULL, adaptavive_quadrature, &(intervals.args[i]));
     }
-    else {
-        
-        //left
-        pthread_t lthread;
-        adaptavive_quadrature_args largs = {args->l, m, args->func, args->approx};
-        pthread_create(&lthread, NULL, pthread_adaptavive_quadrature, &largs);
-        void* lresult;
-
-        //right
-        pthread_t rthread;
-        adaptavive_quadrature_args rargs = {m, args->r, args->func, args->approx};
-        pthread_create(&rthread, NULL, pthread_adaptavive_quadrature, &rargs);
-        void* rresult;
-        
-        pthread_join(lthread, &lresult);
-        pthread_join(rthread, &rresult);
-        
-        *total = *((double*)lresult) + *((double*)rresult);
+    void* res;
+    for (int i = 0; i < intervals.divisions; i++)
+    {
+        pthread_join(thds[i], &res);
+        *total += *(double*)res;
+    }
         return total;        
-    }
+    // }
 }
 
-void* omp_adaptavive_quadrature(adaptavive_quadrature_args* args)
+void* omp_adaptavive_quadrature(adaptavive_quadrature_args* args, int num_intervals)
 {
     double* total = (double*) malloc(sizeof(double));
-    double m = (args->r + args->l)/2;
-    int approx = _acceptable_approx(args, total);
+    *total = 0;
 
-    if(/** Acceptable Aprox **/ approx)
+    adaptavive_quadrature_intervals intervals = _get_intervals(args, num_intervals);
+    double res;
+    #pragma omp parallel
     {
-        //result
-        return total;
-    }
-    else
-    {
-
-        void* lresult;
-        void* rresult;
-        adaptavive_quadrature_args largs = {args->l, m, args->func, args->approx};
-        adaptavive_quadrature_args rargs = {m, args->r, args->func, args->approx};
-        
-        #pragma omp parallel
+        #pragma omp for private(res)
+        for (int i = 0; i < intervals.divisions; i++)
         {
-            #pragma omp sections
+            res = *(adaptavive_quadrature(&(intervals.args[i])));
+            #pragma omp critical (Total)
             {
-                #pragma omp section
-                {
-                    lresult = omp_adaptavive_quadrature(&largs);
-                }
-                #pragma omp section
-                {
-                    rresult = omp_adaptavive_quadrature(&rargs);
-                }
+                *total += res;
             }
-        }
+        }    
+    }
+    // if(/** Acceptable Aprox **/ approx)
+    // {
+    //     //result
+    //     return total;
+    // }
+    // else
+    // {
+
+    //     void* lresult;
+    //     void* rresult;
+    //     adaptavive_quadrature_args largs = {args->l, m, args->func, args->approx};
+    //     adaptavive_quadrature_args rargs = {m, args->r, args->func, args->approx};
         
-        *total = *((double*)lresult) + *((double*)rresult);
+    //     #pragma omp parallel
+    //     {
+    //         #pragma omp sections
+    //         {
+    //             #pragma omp section
+    //             {
+    //                 lresult = omp_adaptavive_quadrature(&largs);
+    //             }
+    //             #pragma omp section
+    //             {
+    //                 rresult = omp_adaptavive_quadrature(&rargs);
+    //             }
+    //         }
+    //     }
+        
+    //     *total = *((double*)lresult) + *((double*)rresult);
 
         return total;
-    }
+    // }
 }
 
 void omp_adaptavive_quadrature_admin(double* total, adaptavive_quadrature_args* initial , Queue_v* queue, sem_t* mutex)
@@ -182,4 +188,33 @@ int _acceptable_approx(adaptavive_quadrature_args* args, double* total)
     *total = tarea;
      
     return fabs(tarea - (larea + rarea)) <= args->approx;
+}
+
+adaptavive_quadrature_intervals _get_intervals(adaptavive_quadrature_args* args, int num_intervals)
+{
+    adaptavive_quadrature_intervals intervals;
+    int div = (args->r - args->l) / num_intervals;
+    int rem = (int)(args->r - args->l) % num_intervals;
+    intervals.divisions = (num_intervals + !!rem);
+    intervals.args = (adaptavive_quadrature_args*) malloc(intervals.divisions * sizeof(adaptavive_quadrature_args));
+
+    //greedy
+    double it = args->l;
+    for (int i = 0; i < num_intervals; i++)
+    {
+        intervals.args[i].l = it;
+        intervals.args[i].r = it + div;
+        intervals.args[i].func = args->func;
+        intervals.args[i].approx = args->approx;
+        it += div;
+    }
+    if(rem != 0)
+    {
+        intervals.args[intervals.divisions - 1].l = it;
+        intervals.args[intervals.divisions - 1].r = args->r;
+        intervals.args[intervals.divisions - 1].func = args->func;
+        intervals.args[intervals.divisions - 1].approx = args->approx;
+    }
+    
+    return intervals;
 }

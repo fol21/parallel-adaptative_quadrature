@@ -21,9 +21,15 @@ typedef struct adaptavive_quadrature_args
     double approx;
 } adaptavive_quadrature_args;
 
+typedef struct adaptavive_quadrature_intervals
+{
+    int divisions;
+    adaptavive_quadrature_args* args;
+} adaptavive_quadrature_intervals;
+
 double* adaptavive_quadrature(adaptavive_quadrature_args* args);
-void* pthread_adaptavive_quadrature(void* arg);
-void* omp_adaptavive_quadrature(adaptavive_quadrature_args* args);
+void* pthread_adaptavive_quadrature(void* arg, int num_intervals);
+void* omp_adaptavive_quadrature(adaptavive_quadrature_args* args, int num_intervals);
 void omp_adaptavive_quadrature_admin(double* total, adaptavive_quadrature_args* initial , Queue_v* queue, sem_t* mutex);
 void omp_adaptavive_quadrature_worker(double* total, Queue_v* queue, sem_t* mutex);
 
