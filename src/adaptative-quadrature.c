@@ -65,8 +65,7 @@ void* pthread_adaptavive_quadrature(void* arg, int num_intervals)
         pthread_join(thds[i], &res);
         *total += *(double*)res;
     }
-        return total;        
-    // }
+    return total;        
 }
 
 void* omp_adaptavive_quadrature(adaptavive_quadrature_args* args, int num_intervals)
@@ -88,83 +87,80 @@ void* omp_adaptavive_quadrature(adaptavive_quadrature_args* args, int num_interv
             }
         }    
     }
-    // if(/** Acceptable Aprox **/ approx)
-    // {
-    //     //result
-    //     return total;
-    // }
-    // else
-    // {
-
-    //     void* lresult;
-    //     void* rresult;
-    //     adaptavive_quadrature_args largs = {args->l, m, args->func, args->approx};
-    //     adaptavive_quadrature_args rargs = {m, args->r, args->func, args->approx};
-        
-    //     #pragma omp parallel
-    //     {
-    //         #pragma omp sections
-    //         {
-    //             #pragma omp section
-    //             {
-    //                 lresult = omp_adaptavive_quadrature(&largs);
-    //             }
-    //             #pragma omp section
-    //             {
-    //                 rresult = omp_adaptavive_quadrature(&rargs);
-    //             }
-    //         }
-    //     }
-        
-    //     *total = *((double*)lresult) + *((double*)rresult);
-
-        return total;
-    // }
+    return total;
 }
 
-void omp_adaptavive_quadrature_admin(double* total, adaptavive_quadrature_args* initial , Queue_v* queue, sem_t* mutex)
+void omp_adaptavive_quadrature_admin(
+    double* total,
+    adaptavive_quadrature_args* initial ,
+    Queue_v* queue,
+    int num_intervals,
+    sem_t* mutex)
 {
-    enqueue(queue, initial);
-    while(!isEmpty(queue))
+    adaptavive_quadrature_intervals intervals = _get_intervals(initial, num_intervals);
+    for (int i = 0; i < intervals.divisions; i++)
     {
-        #pragma omp parallel
+        enqueue(queue, &(intervals.args[i]));
+    }
+    
+    int empty = 0;
+    #pragma omp parallel
+    {
+        #pragma omp for firstprivate(empty)
+        for (int i = 0; i < omp_get_num_threads(); i++)
         {
-            #pragma omp for
-            for (int i = 0; i < queue->size; i++)
+            // printf("Thread %d executa a iteração %d do loop\n", omp_get_thread_num(), i);
+            adaptavive_quadrature_args* initial;
+            #pragma omp critical
             {
-                // printf("Thread %d executa a iteração %d do loop\n", omp_get_thread_num(), i);
-                omp_adaptavive_quadrature_worker(total, queue, mutex);
+                empty = isEmpty(queue);
+                if(!empty)
+                    initial = (adaptavive_quadrature_args*) dequeue(queue);
+            }
+            while(!empty)
+            {
+                // printf("Thread %d vai executar worker %d\n", omp_get_thread_num(), i);
+                omp_adaptavive_quadrature_worker(total, initial, queue, mutex);
+                #pragma omp critical
+                {
+                    empty = isEmpty(queue);
+                    initial = (adaptavive_quadrature_args*) dequeue(queue);
+                }
             }
         }
     }
+    
 }
 
-void omp_adaptavive_quadrature_worker(double* total, Queue_v* queue, sem_t* mutex)
+void omp_adaptavive_quadrature_worker(
+    double* total,
+    adaptavive_quadrature_args* initial,
+    Queue_v* queue,
+    sem_t* mutex
+)
 {
-    adaptavive_quadrature_args* args = (adaptavive_quadrature_args*) dequeue(queue);  
-    double m = (args->r + args->l)/2;
+    adaptavive_quadrature_args* args = initial;  
     double tarea = 0;
-    int approx = _acceptable_approx(args, &tarea);
-    *total += tarea; 
+    double m;
+    int approx;
+    
+    m = (args->r + args->l)/2;
+    approx = _acceptable_approx(args, &tarea);
+    
 
     if(!approx)
     {        
         adaptavive_quadrature_args* largs = create_adaptative_quadrature_args(args->l, m, args->func, args->approx);
         adaptavive_quadrature_args* rargs = create_adaptative_quadrature_args(m, args->r, args->func, args->approx);
-        if(mutex != NULL)
-        {
-            //wait
-            sem_wait(mutex);
-            enqueue(queue, largs);
-            enqueue(queue, rargs);
-            //signal
-            sem_post(mutex);  
-        } else
+        #pragma omp critical
         {
             enqueue(queue, largs);
             enqueue(queue, rargs);
         }
+    } else {
+        *total += tarea; 
     }
+    
 }
 
 int _acceptable_approx(adaptavive_quadrature_args* args, double* total)

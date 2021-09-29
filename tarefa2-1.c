@@ -49,15 +49,16 @@ void omp_routine(void* arg)
 
 int main(int argc, char *argv[])
 {
-    omp_set_num_threads(8);
-    omp_set_nested(1);
 
     //Argument Input
     double L = (double) strtof(argv[1], NULL);
     double R = (double) strtof(argv[2], NULL);
     double A = (double) strtof(argv[3], NULL);
     int NI = (int) strtol(argv[4], NULL , 10);
-    printf("Parametros l, r, aproximation, number f intervals = %.1f %.1f %.9f %d\n", L, R, A, NI);
+    printf("Parametros l, r, aproximation, number of intervals = %.1f %.1f %.9f %d\n", L, R, A, NI);
+    omp_set_num_threads(NI);
+    // omp_set_num_threads(4);
+    omp_set_nested(1);
 
     adaptavive_quadrature_args aq_args = {L, R, abs_sinc, A};
     _r_args args = {aq_args, NI};
