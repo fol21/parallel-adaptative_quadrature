@@ -120,7 +120,6 @@ void omp_adaptavive_quadrature_admin(
                 if(initial != NULL)
                     omp_adaptavive_quadrature_worker(total, initial, queue);
                 empty = isEmpty(queue);
-
             }
         }
     }
@@ -189,6 +188,7 @@ adaptavive_quadrature_intervals _get_intervals(adaptavive_quadrature_args* args,
         intervals.divisions = 1;
         intervals.args[0] = *args;
     } else {
+        double step = (args->r - args->l) / num_intervals;
         int div = (args->r - args->l) / num_intervals;
         int rem =  (int)(args->r - args->l) >= num_intervals ? (int)(args->r - args->l) % num_intervals : 1;
         intervals.divisions = (num_intervals + !!rem);
@@ -199,10 +199,10 @@ adaptavive_quadrature_intervals _get_intervals(adaptavive_quadrature_args* args,
         for (int i = 0; i < num_intervals; i++)
         {
             intervals.args[i].l = it;
-            intervals.args[i].r = it + div;
+            intervals.args[i].r = it + step;
             intervals.args[i].func = args->func;
             intervals.args[i].approx = args->approx;
-            it += div;
+            it = intervals.args[i].r;
         }
         if(rem != 0)
         {
