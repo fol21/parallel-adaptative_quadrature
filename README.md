@@ -21,11 +21,12 @@ ou equivalentes.
 
 Basta executar um dos comandos
 ```bash
-make inicializa.test PARAMS="l r APROX"
+make inicializa.test PARAMS="l r APROX NUMTHREADS"
 ```
 Ex:
 ```bash
-make tarefa2-1 && clear && ./bin/tarefa2-1 1 10 0.000000001
+make tarefa2-1 && clear && ./bin/tarefa2-1 0 10 0.000000001 4
+make tarefa2-2 && clear && ./bin/tarefa2-1 0 10 0.001 4
 ```
 
 ## Compilando o Programa
@@ -35,6 +36,7 @@ make tarefa2-1 && clear && ./bin/tarefa2-1 1 10 0.000000001
 Execute o comando
 ```bash
 make tarefa2-1
+make tarefa2-2
 ```
 
 ## Testes

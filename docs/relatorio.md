@@ -1,19 +1,3 @@
-<style type="text/css">
-.tg  {border-collapse:collapse;border-spacing:0;}
-.tg td{border-color:black;border-style:solid;border-width:1px;font-family:Arial, sans-serif;font-size:11px;
-  overflow:hidden;padding:10px 5px;word-break:normal;}
-.tg th{border-color:black;border-style:solid;border-width:1px;font-family:Arial, sans-serif;font-size:11px;
-  font-weight:normal;overflow:hidden;padding:10px 5px;word-break:normal;}
-.tg .tg-baqh{text-align:center;vertical-align:top}
-.tg .tg-baqh-bold{text-align:center;vertical-align:top; font-weight: bold}
-.tg .tg-y6fn{background-color:#c0c0c0;text-align:left;vertical-align:top}
-.tg .tg-6qw1{background-color:#c0c0c0;text-align:center;vertical-align:top}
-
-.center {display: block; margin-left: auto; margin-right: auto;}
-table.center{margin-left: auto;margin-right: auto;}
-</style>
-
-
 # Quadratura Adaptativa Paralela
 Descrição dos testes realizados, problemas identificados e não resolvidos. 
 
@@ -246,6 +230,20 @@ double ustopwatch(void (*routine)(void*), void* args)
 }
 ````
 
+<style type="text/css">
+.tg  {border-collapse:collapse;border-spacing:0;}
+.tg td{border-color:black;border-style:solid;border-width:1px;font-family:Arial, sans-serif;font-size:11px;
+  overflow:hidden;padding:10px 5px;word-break:normal;}
+.tg th{border-color:black;border-style:solid;border-width:1px;font-family:Arial, sans-serif;font-size:11px;
+  font-weight:normal;overflow:hidden;padding:10px 5px;word-break:normal;}
+.tg .tg-baqh{text-align:center;vertical-align:top}
+.tg .tg-baqh-bold{text-align:center;vertical-align:top; font-weight: bold}
+.tg .tg-y6fn{background-color:#c0c0c0;text-align:left;vertical-align:top}
+.tg .tg-6qw1{background-color:#c0c0c0;text-align:center;vertical-align:top}
+
+.center {display: block; margin-left: auto; margin-right: auto;}
+table.center{margin-left: auto;margin-right: auto;}
+</style>
 <table class="tg center">
   <thead>
     <tr>
