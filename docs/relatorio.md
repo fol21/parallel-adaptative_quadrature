@@ -5,6 +5,7 @@
 .tg th{border-color:black;border-style:solid;border-width:1px;font-family:Arial, sans-serif;font-size:11px;
   font-weight:normal;overflow:hidden;padding:10px 5px;word-break:normal;}
 .tg .tg-baqh{text-align:center;vertical-align:top}
+.tg .tg-baqh-bold{text-align:center;vertical-align:top; font-weight: bold}
 .tg .tg-y6fn{background-color:#c0c0c0;text-align:left;vertical-align:top}
 .tg .tg-6qw1{background-color:#c0c0c0;text-align:center;vertical-align:top}
 
@@ -13,7 +14,7 @@ table.center{margin-left: auto;margin-right: auto;}
 </style>
 
 
-# Broadcast entre threads usando um buffer compartilhado
+# Quadratura Adaptativa Paralela
 Descrição dos testes realizados, problemas identificados e não resolvidos. 
 
 *por **Fernando Lima** (**2020877**)*
@@ -248,7 +249,7 @@ double ustopwatch(void (*routine)(void*), void* args)
 <table class="tg center">
   <thead>
     <tr>
-      <th class="tg-y6fn" rowspan="2"></th>
+      <th class="tg-6qw1" rowspan="2"> (desempenho, area)</th>
       <th class="tg-6qw1" colspan="3">1 thread</th>
       <th class="tg-6qw1" colspan="3">2 threads</th>
       <th class="tg-6qw1" colspan="3">4 threads</th>
@@ -267,43 +268,51 @@ double ustopwatch(void (*routine)(void*), void* args)
   </thead>
   <tbody>
     <tr>
-      <td class="tg-y6fn">Pthread (us)</td>
-      <td class="tg-0lax">-</td>
-      <td class="tg-0lax">-</td>
-      <td class="tg-0lax">-</td>
-      <td class="tg-0lax">-</td>
-      <td class="tg-0lax">-</td>
-      <td class="tg-0lax">-</td>
-      <td class="tg-0lax">-</td>
-      <td class="tg-0lax">-</td>
-      <td class="tg-0lax">-</td>
+      <td class="tg-y6fn">Pthread (us|u.a)</td>
+      <td class="tg-baqh">(341, 4.452)</td>
+      <td class="tg-baqh">(304, 4.755)</td>
+      <td class="tg-baqh-bold">(1204, 6.330)</td>
+      <td class="tg-baqh">(499, 4.452)</td>
+      <td class="tg-baqh">(342, 4.755)</td>
+      <td class="tg-baqh-bold">(808, 6.330)</td>
+      <td class="tg-baqh">(777, 6.623)</td>
+      <td class="tg-baqh">(787, 6.303)</td>
+      <td class="tg-baqh">(1517, 6,330)</td>
     </tr>
     <tr>
-      <td class="tg-y6fn">OpenMP v1 (us)</td>
-      <td class="tg-0lax">-</td>
-      <td class="tg-0lax">-</td>
-      <td class="tg-0lax">-</td>
-      <td class="tg-0lax">-</td>
-      <td class="tg-0lax">-</td>
-      <td class="tg-0lax">-</td>
-      <td class="tg-0lax">-</td>
-      <td class="tg-0lax">-</td>
-      <td class="tg-0lax">-</td>
+      <td class="tg-y6fn">OpenMP v1 (us|u.a)</td>
+      <td class="tg-baqh">(4545, 4.452)</td>
+      <td class="tg-baqh">(2069, 4.755)</td>
+      <td class="tg-baqh-bold">(6470, 6.330)</td>
+      <td class="tg-baqh">(5942, 4.452)</td>
+      <td class="tg-baqh">(4467, 4.755)</td>
+      <td class="tg-baqh-bold">(4257, 6.330)</td>
+      <td class="tg-baqh">(4591, 6.623)</td>
+      <td class="tg-baqh">(4884, 6.303)</td>
+      <td class="tg-baqh-bold">(7935, 6.330)</td>
     </tr>
     <tr>
-      <td class="tg-y6fn">OpenMP v2 (us)</td>
-      <td class="tg-0lax">-</td>
-      <td class="tg-0lax">-</td>
-      <td class="tg-0lax">-</td>
-      <td class="tg-0lax">-</td>
-      <td class="tg-0lax">-</td>
-      <td class="tg-0lax">-</td>
-      <td class="tg-0lax">-</td>
-      <td class="tg-0lax">-</td>
-      <td class="tg-0lax">-</td>
+      <td class="tg-y6fn">OpenMP v2 (us|u.a)</td>
+      <td class="tg-baqh">(45, 4.452)</td>
+      <td class="tg-baqh">(50, 4.755)</td>
+      <td class="tg-baqh-bold">(1088, 6.330)</td>
+      <td class="tg-baqh">(188, 4.452)</td>
+      <td class="tg-baqh">(200, 4.755)</td>
+      <td class="tg-baqh-bold">(1324, 6.330)</td>
+      <td class="tg-baqh">(344, 4.452)</td>
+      <td class="tg-baqh">(321, 4.755)</td>
+      <td class="tg-baqh-bold">(1417, 6.330)</td>
+    </tr>
+    <tr>
+      <td class="tg-y6fn">WolframAlpha*</td>
+      <td class="tg-baqh-bold" colspan="2">Total: 6.330</td>
     </tr>
   </tbody>
 </table>
 
-A tabela acima mostra os resultados.
+  **Obtido em: https://www.wolframalpha.com/input/?i2d=true&i=Integrate%5Babs%5C%2840%29sinc%5C%2840%29x%5C%2841%29%5C%2841%29%2C%7Bx%2C-25%2C25%7D%5D*
+
+
+A tabela acima mostra os resultados obtidos pelo cálculo da área na função *abs_sinc* partindo dos intervalos (l,r) = (-25, 25), conforme mostrado o link acima. O WolframAlpha serviu como fonte de verdade para comparar os resultados obtidos com a variação de threads e aproximações.
+Dos resultados mostrados para tabela é seguro dizer que o valor converge para a fonte de verdade a partir da aproximação de *0.0000001* em todas as combinções de threads. Os valores foram medidos na casa dos microsegundos, por isso pequenas variações não são tão relevantes para se observar um desempenho significativo ao adicionar mais threads. Notoriamente, a implementação com Pthreads se mostrou a mais veloz entre as combinações e o Pool de threads na versão OpenMP v2 otimizou a versão v1 reduzindo o tempo compatível com a versão Pthreads, portanto ouve uma melhora. Vale ressaltar que nesse patamar de tempo, é necessário considerar o tempo do processo abrir threads e a proximidade das memórias alocadas aos processadores, o que, nesse patamar, pode adicionar componentes de tempo as implementações.
 
