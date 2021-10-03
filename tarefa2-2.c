@@ -15,32 +15,34 @@
 #include <omp.h>
 #endif
 
-void omp_routine(void* args)
+typedef struct _r_args {adaptavive_quadrature_args aq_args; int num_intervals;} _r_args;
+
+void omp_routine(void* arg)
 {
-    adaptavive_quadrature_args* qargs = (adaptavive_quadrature_args*) args;
+    _r_args* args = (_r_args*) arg;
     double total = 0;
     Queue_v* queue = createQueue(1024 * 1024  / sizeof(int));
-    sem_t mutex;
-    sem_init(&mutex, 0, 1);
 
-    omp_adaptavive_quadrature_admin(&total, qargs, queue, &mutex);
-    sem_destroy(&mutex);
+    omp_adaptavive_quadrature_admin(&total, &(args->aq_args), queue, 1);
     printf("total: %2f\n", total);
 }
 
 int main(int argc, char *argv[])
 {
-    omp_set_num_threads(4);
-    omp_set_nested(1);
-
-    // //Argument Input
+    //Argument Input
     double L = (double) strtof(argv[1], NULL);
     double R = (double) strtof(argv[2], NULL);
     double A = (double) strtof(argv[3], NULL);
-    printf("Parametros l, r, aproximation = %.1f %.1f %.9f\n", L, R, A);
+    int T = (int) strtol(argv[4], NULL , 10);
+    printf("Parametros l, r, aproximation, number of threads = %.1f %.1f %.9f %d\n", L, R, A, T);
+    omp_set_num_threads(T);
+    // omp_set_num_threads(4);
+    omp_set_nested(1);
 
-    adaptavive_quadrature_args args = {L, R, abs_sinc, A};
-    // adaptavive_quadrature_args args = {-5000, 5000, abs_sinc, 0.00001};
+    adaptavive_quadrature_args aq_args = {L, R, abs_sinc, A};
+    _r_args args = {aq_args, T};
+    // adaptavive_quadrature_args aq_args = {-10, 10, abs_sinc, 0.00001};
+    // _r_args args = {aq_args, 4};
 
 
     // // Sequential

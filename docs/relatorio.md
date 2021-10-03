@@ -1,326 +1,309 @@
+<style type="text/css">
+.tg  {border-collapse:collapse;border-spacing:0;}
+.tg td{border-color:black;border-style:solid;border-width:1px;font-family:Arial, sans-serif;font-size:11px;
+  overflow:hidden;padding:10px 5px;word-break:normal;}
+.tg th{border-color:black;border-style:solid;border-width:1px;font-family:Arial, sans-serif;font-size:11px;
+  font-weight:normal;overflow:hidden;padding:10px 5px;word-break:normal;}
+.tg .tg-baqh{text-align:center;vertical-align:top}
+.tg .tg-y6fn{background-color:#c0c0c0;text-align:left;vertical-align:top}
+.tg .tg-6qw1{background-color:#c0c0c0;text-align:center;vertical-align:top}
+
+.center {display: block; margin-left: auto; margin-right: auto;}
+table.center{margin-left: auto;margin-right: auto;}
+</style>
+
+
 # Broadcast entre threads usando um buffer compartilhado
 Descrição dos testes realizados, problemas identificados e não resolvidos. 
 
 *por **Fernando Lima** (**2020877**)*
 
 
-##### *...Usando a técnica de passagem de bastão e a modelagem proposta por Andrews, implemente em C e pthreads uma estrutura de dados que é um buffer limitado com N posições, usado para broadcast entre P produtores e C consumidores. Cada produtor deve depositar I ítens e depois terminar execução, e cada consumidor deve consumir P\*I itens e terminar sua execução. (Os valores de N, P, C e I devem ser parâmetros de linha de comando para o programa de teste desenvolvido, nesta ordem.). Para simplificar, vamos supor que os itens de dados enviados são inteiros...*
+Neste trabalho duas variantes do algoritmo da quadratura adaptativa, utilizando OpenMP e uma com Pthreads. O programa utiliza X threads para computar a aproximação, pelo método de trapézios, da área abaixo da curva formada por uma função f. O número de trapézios a ser calculado para realizar a aproximação depende de uma tolerância. Em resumo, deve-se implementar um método seguindo as instruções:
 
-Este documento descreve testes de funcionalidade de cada da descrição enunciada acima, utilizando pthreads as funcionalidades e o padrão *Buffer* foi implementado na biblioteca *buffer.1h* que disponibiliza uma Api funcional que é consumida pelas threads de depósito e consumo nos programas principais de cada teste.
+1. Para determinado intervalo [a,b], o algoritmo calcula a área do trapézio com extremidades (a, b, f(a), f(b)), e a área dos dois subtrapézios formados por (a, (b-a)/2, f(a), f((b-a)/2)) e por ((b-a)/2, b, f((b-a)/2), f(b)). 
+2. Se a diferença entre a área do trapézio maior e a soma dos dois subtrapézios fica abaixo de uma tolerância, o cálculo da área entre a e b está completo. 
+3. Caso contrário, repet-se o mesmo procedimento para os trapézios menores. A tolerância na diferença entre um trapézio e os dois subtrapézios "seguintes" deve ser uma porcentagem da soma de áreas dos dois subtrapézios. 
 
-##### *...Ao chamar deposita, o produtor deve ficar bloqueado até conseguir inserir o novo item, e ao chamar consome o consumidor deve ficar bloqueado até conseguir um item para consumir. Uma posição só pode ser reutilizada quando todos os C consumidores tiverem lido o dado. Cada consumidor deve receber as mensagens (dados) na ordem em que foram depositadas. Por favor usem o arquivo disponibilizado buffer.h para a interface das funções implementadas...*
+Os programas de teste devem:
 
-O resumo do comportamento do buffer pode ser descrito pelas regras de negócio descritas a seguir:
-- Cada Buffer é inicializado com um número de Produtores e Consumidores fixos;
-- O Buffer é construido através de uma fila (FIFO) de dados;
-- Cada produtor observa uma fila (*nxt_free*) que disponibiliza a próxima posição disponível para escrita, garantindo a ordenação;
-- Cada posição possui um contador (*falta_ler[pos]*) que sinaliza quantos consumidores faltam ler o dado na posição;
-- Quando um produtor aloca um dado na fila o contador (*falta_ler*) é setado para o número de consumidores;
-- Quando o contador chega a zero a posiçao é desalocada e inserida na fila de posições (*nxt_free*);
-- Cada consumidor possui uma fila (*nxt_data[meu_id]*) preenchida com as posições em ordem de leitura;
-- Quando um consumidor realiza uma leitura a posição sai da sua fila (*nxt_data[meu_id]*);
-- Os produtores adicionam as posições a cada deposito em cada componente (*nxt_data[meu_id]*) para leitura;
+-  Aceitar facilmente a mudança para outras funções e intervalos, parametrizando o cálculo da integral pelos extremos e por um ponteiro de função.
 
+- Executar cada variante para diferentes números de threads (1, 2 e 4), com algumas medidas preliminares dos tempos obtidos para cada combinação. 
+- Experimentar com diferentes tolerâncias e com diferentes funções;
 
-## Tasks de Consumo e Produção
+A função escolhida foi o módulo da unão *sinc*, dado por:
 
-##### Produção
+<img class="center" src="https://latex.codecogs.com/svg.image?\int_{l}^{r}&space;{\left|&space;\frac{sin(x)}{x}&space;\right|dx}" title="\int_{l}^{r} {\left| \frac{sin(x)}{x} \right|dx}" />
+
+## Primeira Variante
+
+A primeira implementação faz cada thread calcula um subintervalo pelo qual será responsável e calcula o resultado para esse subintervalo inteiro. Quando todas as threads terminarem, a thread principal deve mostrar o resultado final. Essa variante foi implementada com pthreads e com OpenMP.
+
+A quadratura adaptaiva pode ser implementada por uma função sequencia, esse bloco pode ser chamado e divido por mais threads, basta passar os intervalos, a função e aproximação como argumentos de entrada e o total de saída, conforme o critério de parada especificado na terceira isntrução.
+
 ````C
-void* deposita_thread(void* arg)
+double* adaptavive_quadrature(adaptavive_quadrature_args* args)
 {
-    pid_t tid = syscall(SYS_gettid);
+    double* total = (double*) malloc(sizeof(double));
+    double m = (args->r + args->l)/2;
+    int approx = _acceptable_approx(args, total);
 
-    deposita_args* args= (deposita_args*) arg;
-    int count = args->insertions;
-    while (count > 0)
+    if(/** Acceptable Aprox **/ approx)
     {
-        sleep(rand() % 5);
-        int data = args->item * (rand() % 100);
-        
-        //wait
-        sem_wait(&(args->buffer->mutex));
-        deposita(args->buffer, data);
-        count--;
-
-        printf("%d::%d -> Buffer[ ", tid, data);
-        for(int i = 0; i < args->buffer->numpos; i++)
-        {
-            char str[10];
-            sprintf(str, "%d", args->buffer->data[i]);
-            char* symbol = args->buffer->data[i] >= 0 ? str : "*";
-            printf("%s ", symbol);
-        }
-        printf(" ] ( free slots: %d next free: %d )\n", args->buffer->free_slots, front(args->buffer->nxt_free));
-        //signal
-        sem_post(&(args->buffer->mutex));
+        //result
+        return total;
     }
-    return NULL;
-}
-````
-
-##### Consumo
-````C
-void* consome_thread(void* arg)
-{
-    pid_t tid = syscall(SYS_gettid);
-
-    consome_args* args= (consome_args*) arg;
-    
-    int count = args->consome;
-    int data[100];
-    int nxt = 0;
-    for (int i = 0; i < 100; i++){ data[i] = -1;}
-    
-    while (count-- > 0)
-    {
-        sleep(rand() % 2);
+    else {
         
-        //wait
-        sem_wait(&(args->buffer->mutex));
-        data[nxt] = consome(args->buffer, args->id);
-        printf("Consumer %d data: [ ", args->id);
-        int it = 0;
-        while(data[it] != -1)
-        {
-            printf("%d ", data[it++]);
-        }
-        printf(
-            "] ( free slots: %d next data: %d )\n",
-            args->buffer->free_slots,
-            isEmpty(args->buffer->nxtdata[args->id]) ? -1 : front(args->buffer->nxtdata[args->id])
-        );
+        //left
+        adaptavive_quadrature_args largs = {args->l, m, args->func, args->approx};
+        double* lresult = adaptavive_quadrature(&largs);
 
-        printf("%d::%d <- Buffer[ ", tid, data[nxt++]);
-        for(int i = 0; i < args->buffer->numpos; i++)
-        {
-            char str[10];
-            sprintf(str, "%d", args->buffer->data[i]);
-            char* symbol = args->buffer->data[i] >= 0 ? str : "*";
-            printf("%s[%d] ", symbol, args->buffer->to_read[i]);
-        }
-        printf(" ] ( free slots: %d next free: %d )\n", args->buffer->free_slots, front(args->buffer->nxt_free));
-        //signal
-        sem_post(&(args->buffer->mutex));
-    } 
-    return NULL;
+        //right
+        adaptavive_quadrature_args rargs = {m, args->r, args->func, args->approx};
+        double* rresult = adaptavive_quadrature(&rargs);
+        
+        *total = *lresult + *rresult;
+        return total;        
+    }
 }
 ````
 
-### Testes de Inicialização (OK)
+Com esse bloco pode-se implementar rotinas usando Pthreads e OpenMP. A função Pthread é descrita abaixo
 
-O teste de inicialização teste somente a inicialização e finização do buffer, dado pelo trecho:
-```C
-tbuffer* buffer = iniciabuffer(N, P, C);
-...
-finalizabuffer(buffer);
-```
-
-Para reproduzir o teste utilize o comando:
-````
-make inicializa.test PARAMS="16 2 2 4"
-````
-
-O resultado esperado é descrito pelo bash a seguir, o buffer é inicializado com 16 posições disponíveis 2 produtores e 2 consumidores, o programa também testará a inserção de 4 items, não contemplada nesse teste
-
-````bash
-./bin/test/inicializa.test 16 2 2 4
-Parametros N, P, C, I = 16 2 2 4
-Buffer [ * * * * * * * * * * * * * * * *  ] ( free slots: 16 next free: 0 )
-````
-
-### Testes de Produção (OK)
-
-O teste de produção testa a criação de uma thread para cada produtor que inicializa a função de depósito em um semáforo através da API do buffer, dado pelo trecho:
-```C
-pthread_t* prod_thds = (pthread_t*)malloc(sizeof(pthread_t) * P); 
-...
-//Deposita
-deposita_args* d_arg = (deposita_args *) malloc(sizeof(deposita_args) * P);
-for (int i = 0; i < P; i++)
-{
-    //Produz
-    d_arg[i].buffer = buffer;
-    d_arg[i].item = rand() % 100;
-    d_arg[i].insertions = I;
-    pthread_create(&(prod_thds[i]), NULL, deposita_thread, &d_arg[i]);
-}
-
-for (int i = 0; i < P; i++) {pthread_join(prod_thds[i], NULL);}
-```
-
-Para reproduzir o teste utilize o comando:
-````bash
-make produz.test PARAMS="16 2 2 4"
-````
-
-O resultado esperado é descrito pelo bash a seguir, o buffer é inicializado com 16 posições disponíveis 2 produtores e 2 consumidores, o programa também testará a inserção de 4 items aleatórios pelos 2 produtores, totalizando 8 items nas primeiras posições.
-
-````bash
-./bin/test/produz.test 16 2 2 4
-Parametros N, P, C, I = 16 2 2 4
-5372::7998 -> Buffer[ 7998 * * * * * * * * * * * * * * *  ] ( free slots: 15 next free: 1 )
-5372::7396 -> Buffer[ 7998 7396 * * * * * * * * * * * * * *  ] ( free slots: 14 next free: 2 )
-5371::4067 -> Buffer[ 7998 7396 4067 * * * * * * * * * * * * *  ] ( free slots: 13 next free: 3 )
-5372::5332 -> Buffer[ 7998 7396 4067 5332 * * * * * * * * * * * *  ] ( free slots: 12 next free: 4 )
-5371::7470 -> Buffer[ 7998 7396 4067 5332 7470 * * * * * * * * * * *  ] ( free slots: 11 next free: 5 )
-5372::5418 -> Buffer[ 7998 7396 4067 5332 7470 5418 * * * * * * * * * *  ] ( free slots: 10 next free: 6 )
-5371::2158 -> Buffer[ 7998 7396 4067 5332 7470 5418 2158 * * * * * * * * *  ] ( free slots: 9 next free: 7 )
-5371::2158 -> Buffer[ 7998 7396 4067 5332 7470 5418 2158 2158 * * * * * * * *  ] ( free slots: 8 next free: 8 )
-````
-
-Cada inserção é caracterizada pelo bash:
-````bash
-{thread_id}::{item} -> Buffer[ {item} * * * * * * * * * * * * * * *  ...] ( free slots: N - 1 next free: pos )
-````
-
-### Testes de Consumo (OK)
-
-Neste teste o Buffer se inicializa pré-preenchido com 5 items para teste isolado de consumo:
 ````C
-pthread_t* cons_thds = (pthread_t*)malloc(sizeof(pthread_t) * C); 
-int start[] = {100, 200, 300 , 400 , 500, 600, 700};
-tbuffer* buffer = iniciabuffer_pre(N, P, C, NELEMS(start), start);
+void* pthread_adaptavive_quadrature(void* arg, int num_intervals)
+{
+    adaptavive_quadrature_args* args = (adaptavive_quadrature_args*) arg;
+    double* total = (double*) malloc(sizeof(double));
+    *total = 0;
+
+    adaptavive_quadrature_intervals intervals = _get_intervals(args, num_intervals);
+
+    pthread_t* thds = (pthread_t*) malloc(intervals.divisions * sizeof(pthread_t));
+    for (int i = 0; i < intervals.divisions; i++)
+    {
+        pthread_create(&(thds[i]), NULL, _call, &(intervals.args[i]));
+    }
+    void* res;
+    for (int i = 0; i < intervals.divisions; i++)
+    {
+        pthread_join(thds[i], &res);
+        *total += *(double*)res;
+    }
+    return total;        
+}
 ````
 
-O teste de consumo testa a criação de uma thread para cada consumidor C que inicializa a função de consumo em um semáforo através da API do buffer, dado pelo trecho:
-```C
-consome_args* c_arg = (consome_args *) malloc(sizeof(consome_args) * C);
-for (int i = 0; i < C; i++)
+Enquanto a mesma rotina pode ser implementada, de forma análoga, utilizando blocos de *pragmas* com OpenMP.
+
+````C
+void* omp_adaptavive_quadrature(adaptavive_quadrature_args* args, int num_intervals)
 {
-    //Consome
-    c_arg[i].buffer = buffer;
-    c_arg[i].id = i;
-    c_arg[i].consome = P * I;
-    pthread_create(&(cons_thds[i]), NULL, consome_thread, &c_arg[i]);
+    double* total = (double*) malloc(sizeof(double));
+    *total = 0;
+
+    adaptavive_quadrature_intervals intervals = _get_intervals(args, num_intervals);
+    double res;
+    #pragma omp parallel
+    {
+        #pragma omp for private(res)
+        for (int i = 0; i < intervals.divisions; i++)
+        {
+            res = *(adaptavive_quadrature(&(intervals.args[i])));
+            #pragma omp critical (Total)
+            {
+                *total += res;
+            }
+        }    
+    }
+    return total;
+}
+````
+
+Ambas recebem o intervalo inicial, função e aproximação como argumentos e mais o número de intervalos que a função será quebrada e paralelizada. Nessa variante o número de intevalo é igual ao número de threads, cada thread iniciada, no design de *fork-and-join* irá calcular um intervalo e após todas as threads terminarem (*join*) o total é retornado.
+
+
+
+## Segunda Variante
+
+Nessa segunda, a thread principal inicialmente cria uma lista de tarefas, contendo os extremos dos intervalos, com NUMINICIAL tarefas. Cada thread executa uma tarefa, e se ela gerar subtarefas, coloca uma delas na fila global e processa a outra, até que não encontre mais tarefas na fila. A thread principal espera as demais terminarem e mostra o resultado final. Essa variante foi implementada apenas com OpenMP.
+
+A implementação pode ser divida em duas partes. Um método *worker*, na qual é executado pelas threads abertas pelo OpenMP e loop, até a a fila de tarefas estar vazia. E a outra parte é composta pelo método *administrator* na qual gerencia o *Pool* de threads e a lsita de tarefas.
+
+````C
+void omp_adaptavive_quadrature_admin(
+    double* total,
+    adaptavive_quadrature_args* initial,
+    Queue_v* queue,
+    int num_intervals
+)
+{
+    adaptavive_quadrature_intervals intervals = _get_intervals(initial, num_intervals);
+    for (int i = 0; i < intervals.divisions; i++)
+    {
+        enqueue(queue, &(intervals.args[i]));
+    }
+    
+    int empty = 0;
+    #pragma omp parallel
+    {
+        #pragma omp for firstprivate(empty)
+        for (int i = 0; i < omp_get_num_threads(); i++)
+        {
+            while(!empty)
+            {
+                adaptavive_quadrature_args* initial;
+                #pragma omp critical
+                {
+                    initial = !empty ? (adaptavive_quadrature_args*) dequeue(queue) : NULL;
+                }
+                if(initial != NULL)
+                    omp_adaptavive_quadrature_worker(total, initial, queue);
+                empty = isEmpty(queue);
+            }
+        }
+    }
+    
 }
 
-for (int i = 0; i < C; i++) {pthread_join(cons_thds[i], NULL);}
-```
+void omp_adaptavive_quadrature_worker(
+    double* total,
+    adaptavive_quadrature_args* initial,
+    Queue_v* queue
+)
+{
+    adaptavive_quadrature_args* args = initial;  
+    double tarea = 0;
+    double m;
+    int approx;
+    
+    m = (args->r + args->l)/2;
+    approx = _acceptable_approx(args, &tarea);
+    
 
-Para reproduzir o teste utilize o comando:
-````bash
-make consome.test PARAMS="16 1 2 4"
+    if(!approx)
+    {        
+        adaptavive_quadrature_args* largs = create_adaptative_quadrature_args(args->l, m, args->func, args->approx);
+        adaptavive_quadrature_args* rargs = create_adaptative_quadrature_args(m, args->r, args->func, args->approx);
+        #pragma omp critical
+        {
+            enqueue(queue, largs);
+            enqueue(queue, rargs);
+        }
+    } else {
+        *total += tarea; 
+    }
+    
+}
 ````
 
-O resultado esperado é descrito pelo bash a seguir, o buffer é inicializado com 16 posições disponíveis 2 produtores e 2 consumidores, o programa também testará a inserção de 4 items aleatórios pelos 2 produtores, totalizando 8 items nas primeiras posições.
-Cada consumidor lê P * I items e armazena totalizando 10 leituras e retirando P * I posições do buffer.
+Note que nos métodos *administrator* e *worker* é determinada uma região crítica quando uma tarefa é inserida ou retirada da fila. Isso é feito para assegurar o sincronismo na fila compartilhada.
 
-````bash
-./bin/test/consome.test 16 1 2 4
-Parametros N, P, C, I = 16 1 2 4
-Consumer 1 data: [ 100 ] ( free slots: 9 next data: 1 )
-5880::100 <- Buffer[ 100[1] 200[2] 300[2] 400[2] 500[2] 600[2] 700[2] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1]  ] ( free slots: 9 next free: 7 )
-Consumer 0 data: [ 100 ] ( free slots: 10 next data: 1 )
-5879::100 <- Buffer[ *[-1] 200[2] 300[2] 400[2] 500[2] 600[2] 700[2] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1]  ] ( free slots: 10 next free: 7 )
-Consumer 1 data: [ 100 200 ] ( free slots: 10 next data: 2 )
-5880::200 <- Buffer[ *[-1] 200[1] 300[2] 400[2] 500[2] 600[2] 700[2] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1]  ] ( free slots: 10 next free: 7 )
-Consumer 0 data: [ 100 200 ] ( free slots: 11 next data: 2 )
-5879::200 <- Buffer[ *[-1] *[-1] 300[2] 400[2] 500[2] 600[2] 700[2] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1]  ] ( free slots: 11 next free: 7 )
-Consumer 1 data: [ 100 200 300 ] ( free slots: 11 next data: 3 )
-5880::300 <- Buffer[ *[-1] *[-1] 300[1] 400[2] 500[2] 600[2] 700[2] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1]  ] ( free slots: 11 next free: 7 )
-Consumer 1 data: [ 100 200 300 400 ] ( free slots: 11 next data: 4 )
-5880::400 <- Buffer[ *[-1] *[-1] 300[1] 400[1] 500[2] 600[2] 700[2] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1]  ] ( free slots: 11 next free: 7 )
-Consumer 0 data: [ 100 200 300 ] ( free slots: 12 next data: 3 )
-5879::300 <- Buffer[ *[-1] *[-1] *[-1] 400[1] 500[2] 600[2] 700[2] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1]  ] ( free slots: 12 next free: 7 )
-Consumer 0 data: [ 100 200 300 400 ] ( free slots: 13 next data: 4 )
-5879::400 <- Buffer[ *[-1] *[-1] *[-1] *[-1] 500[2] 600[2] 700[2] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1]  ] ( free slots: 13 next free: 7 )
+## Resultados
+
+
+Conforme estabelecido na introdução desse relatório, as tr^ws variantes (Pthread, OpenMP v1, OpenMP v2) foram avaliadas a partir do tempo de execução total de todas as threads abertas, com a função *abs_sinc* descrita na introdução, com três aproximações (0,1, 01001, 0.0000001) com 1,2 e 4 threads abertas.
+
+Foi utilizado o método de contagem de microsegundos da biblioteca *benchmark.h* criada para testar o desempenho de uma rotina.
+
+````C
+import <benchmark.h>
+...
+int main()
+{
+  ...
+  long int utime = (long int) ustopwatch(fork_join_routine, &args);
+  printf("Elapsed: %ld microseconds\n\n", utime);
+  ...
+}
 ````
 
-Cada consumo é caracterizada pelo bash:
-````bash
-Consumer {meu_id} data: [ item ... ] ( free slots: 9 next data: 1 )
-{thread_id}::{item} <- Buffer[ {item[0]}[{falta_ler[0]}] {item[1]}[{falta_ler[1]}]  *[-1] *[-1] ] ( free slots: N - 2 next free: pos )
-````
-Onde *\** caracteriza um slot disponível e *[-1]* siginifica que o contador *falta_ler* não foi inicializado. 
+A função mede o tempo através do método *gettimeofday* :
 
-Note que cada Consumidor termina com P * I items armazenados
-````bash
+````C
+double stopwatch(void (*routine)(void*), void* args)
+{
+    struct timeval current_time;
+    
+    gettimeofday(&current_time, NULL);
+    double tic = (double)current_time.tv_sec + current_time.tv_usec / 1000000.0;
+    
+    routine(args);
+
+    gettimeofday(&current_time, NULL);
+    double toc = (double)current_time.tv_sec + current_time.tv_usec / 1000000.0;
+
+    return (toc - tic);
+}
 ...
-Consumer 1 data: [ 100 200 300 400 ] ( free slots: 11 next data: 4 )
-...
-Consumer 0 data: [ 100 200 300 400 ] ( free slots: 13 next data: 4 )
-...
-````
-Na linha descrita abaixo é possível notar a espera pela liberação do dado em uma determinada posição, enquanto o buffer aguarda o termino do broadcast. Entre colchetes([*falta_ler*]) está discriminado a quantaidade de consumidores a que ainda não realzizaram odado naquela posição. o dado ta teceira posição (*300*) indica que falta *1* consumidor a ler esta posição, enquanto o quarta, quinta, sexta e sétima estão no aguardo de duas leituras, as demais estão desalocadas para depostito de dados pelos produtores.
-````bash
-5880::300 <- Buffer[ *[-1] *[-1] 300[1] 400[2] 500[2] 600[2] 700[2] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1]  ] ( free slots: 11 next free: 7 )
-
-````
-
-### Teste Geral (OK)
-
-Para reproduzir o teste utilize o comando:
-````bash
-make completo.test PARAMS="16 1 2 4"
+double ustopwatch(void (*routine)(void*), void* args)
+{
+    double seconds = stopwatch(routine, args);
+    return seconds * 1000000;
+}
 ````
 
-O teste geral une todas as características descritas nos testes acima e as testa, abrindo simultaneamente várias threads de deposito e consumo, por fim finalizando o buffer. O resultado é descrito pelo bash:
+<table class="tg center">
+  <thead>
+    <tr>
+      <th class="tg-y6fn" rowspan="2"></th>
+      <th class="tg-6qw1" colspan="3">1 thread</th>
+      <th class="tg-6qw1" colspan="3">2 threads</th>
+      <th class="tg-6qw1" colspan="3">4 threads</th>
+    </tr>
+    <tr>
+      <th class="tg-6qw1">0.1</th>
+      <th class="tg-6qw1">0.001</th>
+      <th class="tg-6qw1">0.0000001</th>
+      <th class="tg-6qw1">0.1</th>
+      <th class="tg-6qw1">0.001</th>
+      <th class="tg-6qw1">0.0000001</th>
+      <th class="tg-6qw1">0.1</th>
+      <th class="tg-6qw1">0.001</th>
+      <th class="tg-6qw1">0.0000001</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="tg-y6fn">Pthread (us)</td>
+      <td class="tg-0lax">-</td>
+      <td class="tg-0lax">-</td>
+      <td class="tg-0lax">-</td>
+      <td class="tg-0lax">-</td>
+      <td class="tg-0lax">-</td>
+      <td class="tg-0lax">-</td>
+      <td class="tg-0lax">-</td>
+      <td class="tg-0lax">-</td>
+      <td class="tg-0lax">-</td>
+    </tr>
+    <tr>
+      <td class="tg-y6fn">OpenMP v1 (us)</td>
+      <td class="tg-0lax">-</td>
+      <td class="tg-0lax">-</td>
+      <td class="tg-0lax">-</td>
+      <td class="tg-0lax">-</td>
+      <td class="tg-0lax">-</td>
+      <td class="tg-0lax">-</td>
+      <td class="tg-0lax">-</td>
+      <td class="tg-0lax">-</td>
+      <td class="tg-0lax">-</td>
+    </tr>
+    <tr>
+      <td class="tg-y6fn">OpenMP v2 (us)</td>
+      <td class="tg-0lax">-</td>
+      <td class="tg-0lax">-</td>
+      <td class="tg-0lax">-</td>
+      <td class="tg-0lax">-</td>
+      <td class="tg-0lax">-</td>
+      <td class="tg-0lax">-</td>
+      <td class="tg-0lax">-</td>
+      <td class="tg-0lax">-</td>
+      <td class="tg-0lax">-</td>
+    </tr>
+  </tbody>
+</table>
 
-````bash
-./bin/test/completo.test 16 2 2 4
-Parametros N, P, C, I = 16 2 2 4
-6568::7998 -> Buffer[ 7998 * * * * * * * * * * * * * * *  ] ( free slots: 15 next free: 1 )
-6568::7396 -> Buffer[ 7998 7396 * * * * * * * * * * * * * *  ] ( free slots: 14 next free: 2 )
-6567::4067 -> Buffer[ 7998 7396 4067 * * * * * * * * * * * * *  ] ( free slots: 13 next free: 3 )
-6568::5332 -> Buffer[ 7998 7396 4067 5332 * * * * * * * * * * * *  ] ( free slots: 12 next free: 4 )
-6567::7470 -> Buffer[ 7998 7396 4067 5332 7470 * * * * * * * * * * *  ] ( free slots: 11 next free: 5 )
-6568::5418 -> Buffer[ 7998 7396 4067 5332 7470 5418 * * * * * * * * * *  ] ( free slots: 10 next free: 6 )
-Consumer 1 data: [ 7998 ] ( free slots: 10 next data: 1 )
-6588::7998 <- Buffer[ 7998[1] 7396[2] 4067[2] 5332[2] 7470[2] 5418[2] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1]  ] ( free slots: 10 next free: 6 )
-Consumer 0 data: [ 7998 ] ( free slots: 11 next data: 1 )
-6587::7998 <- Buffer[ *[-1] 7396[2] 4067[2] 5332[2] 7470[2] 5418[2] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1]  ] ( free slots: 11 next free: 6 )
-Consumer 1 data: [ 7998 7396 ] ( free slots: 11 next data: 2 )
-6588::7396 <- Buffer[ *[-1] 7396[1] 4067[2] 5332[2] 7470[2] 5418[2] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1]  ] ( free slots: 11 next free: 6 )
-Consumer 0 data: [ 7998 7396 ] ( free slots: 12 next data: 2 )
-6587::7396 <- Buffer[ *[-1] *[-1] 4067[2] 5332[2] 7470[2] 5418[2] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1]  ] ( free slots: 12 next free: 6 )
-Consumer 1 data: [ 7998 7396 4067 ] ( free slots: 12 next data: 3 )
-6588::4067 <- Buffer[ *[-1] *[-1] 4067[1] 5332[2] 7470[2] 5418[2] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1]  ] ( free slots: 12 next free: 6 )
-Consumer 1 data: [ 7998 7396 4067 5332 ] ( free slots: 12 next data: 4 )
-6588::5332 <- Buffer[ *[-1] *[-1] 4067[1] 5332[1] 7470[2] 5418[2] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1]  ] ( free slots: 12 next free: 6 )
-Consumer 0 data: [ 7998 7396 4067 ] ( free slots: 13 next data: 3 )
-6587::4067 <- Buffer[ *[-1] *[-1] *[-1] 5332[1] 7470[2] 5418[2] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1]  ] ( free slots: 13 next free: 6 )
-Consumer 1 data: [ 7998 7396 4067 5332 7470 ] ( free slots: 13 next data: 5 )
-6588::7470 <- Buffer[ *[-1] *[-1] *[-1] 5332[1] 7470[1] 5418[2] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1]  ] ( free slots: 13 next free: 6 )
-Consumer 1 data: [ 7998 7396 4067 5332 7470 5418 ] ( free slots: 13 next data: -1 )
-6588::5418 <- Buffer[ *[-1] *[-1] *[-1] 5332[1] 7470[1] 5418[1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1]  ] ( free slots: 13 next free: 6 )
-Consumer 1 data: [ 7998 7396 4067 5332 7470 5418 ] ( free slots: 13 next data: -1 )
-6588::-1 <- Buffer[ *[-1] *[-1] *[-1] 5332[1] 7470[1] 5418[1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1]  ] ( free slots: 13 next free: 6 )
-Consumer 1 data: [ 7998 7396 4067 5332 7470 5418 ] ( free slots: 13 next data: -1 )
-6588::-1 <- Buffer[ *[-1] *[-1] *[-1] 5332[1] 7470[1] 5418[1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1]  ] ( free slots: 13 next free: 6 )
-6567::1909 -> Buffer[ * * * 5332 7470 5418 1909 * * * * * * * * *  ] ( free slots: 12 next free: 7 )
-Consumer 0 data: [ 7998 7396 4067 5332 ] ( free slots: 13 next data: 4 )
-6587::5332 <- Buffer[ *[-1] *[-1] *[-1] *[-1] 7470[1] 5418[1] 1909[2] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1]  ] ( free slots: 13 next free: 7 )
-Consumer 0 data: [ 7998 7396 4067 5332 7470 ] ( free slots: 14 next data: 5 )
-6587::7470 <- Buffer[ *[-1] *[-1] *[-1] *[-1] *[-1] 5418[1] 1909[2] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1]  ] ( free slots: 14 next free: 7 )
-6567::166 -> Buffer[ * * * * * 5418 1909 166 * * * * * * * *  ] ( free slots: 13 next free: 8 )
-Consumer 0 data: [ 7998 7396 4067 5332 7470 5418 ] ( free slots: 14 next data: 6 )
-6587::5418 <- Buffer[ *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] 1909[2] 166[2] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1]  ] ( free slots: 14 next free: 8 )
-Consumer 0 data: [ 7998 7396 4067 5332 7470 5418 1909 ] ( free slots: 14 next data: 7 )
-6587::1909 <- Buffer[ *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] 1909[1] 166[2] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1]  ] ( free slots: 14 next free: 8 )
-Consumer 0 data: [ 7998 7396 4067 5332 7470 5418 1909 166 ] ( free slots: 14 next data: -1 )
-6587::166 <- Buffer[ *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] 1909[1] 166[1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1] *[-1]  ] ( free slots: 14 next free: 8 )
-````
+A tabela acima mostra os resultados.
 
-Desta da vez o consumidor 1 terminou com *6* items armazenados. Essa peculiaridade acontenceu pois como as threads de consumo e produção são inicializadas com uma pseudo-aleatoriedade, os produtores inseriram somente 6 items no buffer, tendo somente estes disponíveis para consumo pelos dois consumidores.
-````bash
-...
-Consumer 1 data: [ 7998 7396 4067 5332 7470 5418 ] ( free slots: 13 next data: -1 )
-...
-````
-
-Algum tempo depois, mais dois items foram adicionados ao buffer, possibilitando a leitura de um dos consumidores para os P * I items pré-estabelecidos.
-
-````bash
-...
-6567::1909 -> Buffer[ * * * 5332 7470 5418 1909 * * * * * * * * *  ] ( free slots: 12 next free: 7 )
-...
-6567::166 -> Buffer[ * * * * * 5418 1909 166 * * * * * * * *  ] ( free slots: 13 next free: 8 )
-...
-````
-
-Com isso o consumidor 0 termina sua leitura com P * I items armazenados.
-````bash
-...
-Consumer 0 data: [ 7998 7396 4067 5332 7470 5418 1909 166 ] ( free slots: 14 next data: -1 )
-...
-````
