@@ -17,7 +17,7 @@ Os programas de teste devem:
 - Executar cada variante para diferentes números de threads (1, 2 e 4), com algumas medidas preliminares dos tempos obtidos para cada combinação. 
 - Experimentar com diferentes tolerâncias e com diferentes funções;
 
-A função escolhida foi o módulo da unão *sinc*, dado por:
+A função escolhida foi o módulo da função *sinc*, dado por:
 
 <img class="center" src="https://latex.codecogs.com/svg.image?\int_{l}^{r}&space;{\left|&space;\frac{sin(x)}{x}&space;\right|dx}" title="\int_{l}^{r} {\left| \frac{sin(x)}{x} \right|dx}" />
 
@@ -25,7 +25,7 @@ A função escolhida foi o módulo da unão *sinc*, dado por:
 
 A primeira implementação faz cada thread calcula um subintervalo pelo qual será responsável e calcula o resultado para esse subintervalo inteiro. Quando todas as threads terminarem, a thread principal deve mostrar o resultado final. Essa variante foi implementada com pthreads e com OpenMP.
 
-A quadratura adaptaiva pode ser implementada por uma função sequencia, esse bloco pode ser chamado e divido por mais threads, basta passar os intervalos, a função e aproximação como argumentos de entrada e o total de saída, conforme o critério de parada especificado na terceira isntrução.
+A quadratura adaptaiva pode ser implementada por uma função sequencia, esse bloco pode ser chamado e divido por mais threads, basta passar os intervalos, a função e aproximação como argumentos de entrada e o total de saída, conforme o critério de parada especificado na terceira instrução.
 
 ````C
 double* adaptavive_quadrature(adaptavive_quadrature_args* args)
@@ -189,7 +189,7 @@ Note que nos métodos *administrator* e *worker* é determinada uma região crí
 ## Resultados
 
 
-Conforme estabelecido na introdução desse relatório, as tr^ws variantes (Pthread, OpenMP v1, OpenMP v2) foram avaliadas a partir do tempo de execução total de todas as threads abertas, com a função *abs_sinc* descrita na introdução, com três aproximações (0,1, 01001, 0.0000001) com 1,2 e 4 threads abertas.
+Conforme estabelecido na introdução desse relatório, as trêws variantes (Pthread, OpenMP v1, OpenMP v2) foram avaliadas a partir do tempo de execução total de todas as threads abertas, com a função *abs_sinc* descrita na introdução, com três aproximações (0.1, 0.001, 0.0000001) com 1,2 e 4 threads abertas.
 
 Foi utilizado o método de contagem de microsegundos da biblioteca *benchmark.h* criada para testar o desempenho de uma rotina.
 
@@ -312,5 +312,5 @@ table.center{margin-left: auto;margin-right: auto;}
 
 
 A tabela acima mostra os resultados obtidos pelo cálculo da área na função *abs_sinc* partindo dos intervalos (l,r) = (-25, 25), conforme mostrado o link acima. O WolframAlpha serviu como fonte de verdade para comparar os resultados obtidos com a variação de threads e aproximações.
-Dos resultados mostrados para tabela é seguro dizer que o valor converge para a fonte de verdade a partir da aproximação de *0.0000001* em todas as combinções de threads. Os valores foram medidos na casa dos microsegundos, por isso pequenas variações não são tão relevantes para se observar um desempenho significativo ao adicionar mais threads. Notoriamente, a implementação com Pthreads se mostrou a mais veloz entre as combinações e o Pool de threads na versão OpenMP v2 otimizou a versão v1 reduzindo o tempo compatível com a versão Pthreads, portanto ouve uma melhora. Vale ressaltar que nesse patamar de tempo, é necessário considerar o tempo do processo abrir threads e a proximidade das memórias alocadas aos processadores, o que, nesse patamar, pode adicionar componentes de tempo as implementações.
+Dos resultados mostrados para tabela é seguro dizer que o valor converge para a fonte de verdade a partir da aproximação de *0.0000001* em todas as combinções de threads. Os valores foram medidos na casa dos microsegundos, por isso pequenas variações não são tão relevantes para se observar um desempenho significativo ao adicionar mais threads. Notoriamente, a implementação com Pthreads se mostrou a mais veloz entre as combinações e o Pool de threads na versão OpenMP v2 otimizou a versão v1 reduzindo o tempo os patamares da versão Pthreads (até com o desempenho levemente menor), portanto ouve uma melhora. Vale ressaltar que nesse patamar de tempo, é necessário considerar o tempo do processo abrir threads e a proximidade das memórias alocadas aos processadores, o que, nesse patamar, pode adicionar componentes de tempo as implementações.
 
