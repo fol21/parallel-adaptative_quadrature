@@ -17,7 +17,7 @@ Os programas de teste devem:
 - Executar cada variante para diferentes números de threads (1, 2 e 4), com algumas medidas preliminares dos tempos obtidos para cada combinação. 
 - Experimentar com diferentes tolerâncias e com diferentes funções;
 
-A função escolhida foi o módulo da unão *sinc*, dado por:
+A função escolhida foi o módulo da função *sinc*, dado por:
 
 <img class="center" src="https://latex.codecogs.com/svg.image?\int_{l}^{r}&space;{\left|&space;\frac{sin(x)}{x}&space;\right|dx}" title="\int_{l}^{r} {\left| \frac{sin(x)}{x} \right|dx}" />
 
@@ -25,7 +25,7 @@ A função escolhida foi o módulo da unão *sinc*, dado por:
 
 A primeira implementação faz cada thread calcula um subintervalo pelo qual será responsável e calcula o resultado para esse subintervalo inteiro. Quando todas as threads terminarem, a thread principal deve mostrar o resultado final. Essa variante foi implementada com pthreads e com OpenMP.
 
-A quadratura adaptaiva pode ser implementada por uma função sequencia, esse bloco pode ser chamado e divido por mais threads, basta passar os intervalos, a função e aproximação como argumentos de entrada e o total de saída, conforme o critério de parada especificado na terceira isntrução.
+A quadratura adaptaiva pode ser implementada por uma função sequencia, esse bloco pode ser chamado e divido por mais threads, basta passar os intervalos, a função e aproximação como argumentos de entrada e o total de saída, conforme o critério de parada especificado na terceira instrução.
 
 ````C
 double* adaptavive_quadrature(adaptavive_quadrature_args* args)
@@ -189,7 +189,7 @@ Note que nos métodos *administrator* e *worker* é determinada uma região crí
 ## Resultados
 
 
-Conforme estabelecido na introdução desse relatório, as tr^ws variantes (Pthread, OpenMP v1, OpenMP v2) foram avaliadas a partir do tempo de execução total de todas as threads abertas, com a função *abs_sinc* descrita na introdução, com três aproximações (0,1, 01001, 0.0000001) com 1,2 e 4 threads abertas.
+Conforme estabelecido na introdução desse relatório, as trêws variantes (Pthread, OpenMP v1, OpenMP v2) foram avaliadas a partir do tempo de execução total de todas as threads abertas, com a função *abs_sinc* descrita na introdução, com três aproximações (0.1, 0.001, 0.0000001) com 1,2 e 4 threads abertas.
 
 Foi utilizado o método de contagem de microsegundos da biblioteca *benchmark.h* criada para testar o desempenho de uma rotina.
 
